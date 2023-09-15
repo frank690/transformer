@@ -10,7 +10,9 @@ from torch import nn
 from tqdm import tqdm
 
 
-def save_model(model, path, epoch, optimizer, validation_loss: float) -> None:
+def save_model(
+    model: nn.Module, path: str, epoch: int, optimizer, validation_loss: float
+) -> None:
     """
     This function saves the model to the given path.
     :param model: model to save
@@ -31,8 +33,23 @@ def save_model(model, path, epoch, optimizer, validation_loss: float) -> None:
     )
 
 
+def load_model(model: nn.Module, path: str) -> nn.Module:
+    """
+    Loads the model from the given path.
+    :param model: model to load
+    :param path: path to load the model from
+    :return: loaded model
+    """
+    checkpoint = torch.load(path)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    print(
+        f"Model {path} is loaded from epoch {checkpoint['epoch']}, loss {checkpoint['loss']}"
+    )
+    return model
+
+
 def train(
-    model,
+    model: nn.Module,
     optimizer,
     num_epochs: int,
     training_dataloader,
@@ -76,7 +93,7 @@ def train(
     return log
 
 
-def _validate(model, validation_dataloader, device: str) -> tuple:
+def _validate(model: nn.Module, validation_dataloader, device: str) -> tuple:
     """
     Validates the given model on the given validation data.
     :param model: model to validate
@@ -104,7 +121,9 @@ def _validate(model, validation_dataloader, device: str) -> tuple:
         return validation_accuracy, validation_loss_epoch
 
 
-def _train_one_epoch(model, optimizer, training_dataloader, device: str) -> tuple:
+def _train_one_epoch(
+    model: nn.Module, optimizer, training_dataloader, device: str
+) -> tuple:
     """
     Trains the given model for one epoch.
     :param model: model to train
