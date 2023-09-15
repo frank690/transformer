@@ -74,7 +74,6 @@ class GermanEnglishDataset(Dataset):
         :param tokenizer: tokenizer to use
         :return: vocabulary
         """
-        i = 0
         counter = Counter()
         with open(filepath, encoding="utf8") as f:
             for string_ in f:
@@ -176,8 +175,3 @@ def preprocess():
         collate_fn=lambda batch: generate_batch(batch, dataset.de_vocab),
     )
     return train_dataloader, test_dataloader, val_dataloader
-
-
-if __name__ == "__main__":
-    preprocess()
-    print("Done!")
