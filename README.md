@@ -10,14 +10,14 @@ This project was done in the fall of 2023, using Python 3.9.4
 
 ## What is left to do?
 
-- [ ] Implement data preprocessing
-    - [ ] Download data
-    - [ ] Tokenization
-    - [ ] Create dataset / data loader
-- [ ] Implement positional encoding
+- [x] Implement data preprocessing
+    - [x] Download data
+    - [x] Tokenization
+    - [x] Create dataset / data loader
+- [x] Implement positional encoding
 - [ ] Implement transformer encoder
 - [ ] Implement transformer decoder
-- [ ] Implement training routine
+- [x] Implement training routine
 
 
 ## What data is used?
