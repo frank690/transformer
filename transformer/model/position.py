@@ -26,10 +26,10 @@ class PositionalEncoding(nn.Module):
         denominator = torch.exp(
             torch.arange(0, dimension, 2) * (-log(10000.0) / dimension)
         )
-        pe = torch.zeros(MAX_NUMBER_OF_TOKENS, 1, dimension)
-        pe[:, 0, 0::2] = torch.sin(position * denominator)
-        pe[:, 0, 1::2] = torch.cos(position * denominator)
-        self.register_buffer("pe", pe)
+        encoding = torch.zeros(MAX_NUMBER_OF_TOKENS, 1, dimension)
+        encoding[:, 0, 0::2] = torch.sin(position * denominator)
+        encoding[:, 0, 1::2] = torch.cos(position * denominator)
+        self.register_buffer("encoding", encoding)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -37,4 +37,4 @@ class PositionalEncoding(nn.Module):
         :param x: input data
         :return: positional encoded output data
         """
-        return x + self.pe[: x.size(0)]
+        return x + self.encoding[: x.size(0)]
