@@ -14,18 +14,40 @@ class Heads(nn.Module):
     Class defining multiple heads of the transformer.
     """
 
-    def __init__(self, size: int, num_heads: int, is_in_encoder: bool = True) -> None:
+    def __init__(
+        self,
+        embedding_dimension: int,
+        num_heads: int,
+        dropout: float,
+        is_masked: bool = True,
+    ) -> None:
         """
         Initialization method.
-        :param size: size of each head.
+        :param embedding_dimension: embedding dimension.
         :param num_heads: number of heads.
-        :param is_in_encoder: whether the heads are part of an encoder or decoder.
+        :param dropout: dropout rate.
+        :param is_masked: whether the heads are masked or not.
         :return: None
         """
         super().__init__()
+
+        head_size = embedding_dimension // num_heads
+
+        self.dropout = nn.Dropout(dropout)
         self.heads = nn.ModuleList(
-            [Head(size, is_in_encoder) for _ in range(num_heads)]
+            [
+                Head(
+                    embedding_dimension=embedding_dimension,
+                    head_size=head_size,
+                    dropout=dropout,
+                    is_masked=is_masked,
+                )
+                for _ in range(num_heads)
+            ]
         )
+        self.linear = nn.Linear(head_size * num_heads, embedding_dimension)
+
+        assert embedding_dimension % num_heads == 0
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -33,7 +55,9 @@ class Heads(nn.Module):
         :param data: input data
         :return: output data
         """
-        return torch.cat([head(data) for head in self.heads], dim=-1)
+        result = torch.cat([head(data) for head in self.heads], dim=-1)
+        result = self.linear(result)
+        return self.dropout(result)
 
 
 class Head(nn.Module):
@@ -41,21 +65,40 @@ class Head(nn.Module):
     Class defining a single Head of the transformer.
     """
 
-    def __init__(self, size: int, is_in_encoder: bool = True) -> None:
+    def __init__(
+        self,
+        embedding_dimension: int,
+        head_size: int,
+        dropout: float,
+        is_masked: bool = False,
+    ) -> None:
         """
         Initialization method.
-        :param size: size of the head
-        :param is_in_encoder: whether the head is part of an encoder or decoder
+        :param embedding_dimension: embedding dimension.
+        :param head_size: size of the head (a whole numbered fraction of the embedding dimension).
+        :param dropout: dropout rate.
+        :param is_masked: whether the head is masked or not.
         :return: None
         """
         super().__init__()
-        self.is_in_encoder = is_in_encoder
+        self.is_masked = is_masked
+        self.embedding_dimension = embedding_dimension
 
-        self.key = nn.Linear(size, size, bias=False)  # what head contains
-        self.query = nn.Linear(size, size, bias=False)  # what head is looking for
-        self.value = nn.Linear(size, size, bias=False)  # what head returns to others
+        self.dropout = nn.Dropout(dropout)
 
-        self.register_buffer("mask", torch.tril(torch.ones(size, size)))
+        self.key = nn.Linear(
+            embedding_dimension, head_size, bias=False
+        )  # what head contains
+        self.query = nn.Linear(
+            embedding_dimension, head_size, bias=False
+        )  # what head is looking for
+        self.value = nn.Linear(
+            embedding_dimension, head_size, bias=False
+        )  # what head returns to others
+
+        self.register_buffer(
+            "mask", torch.tril(torch.ones(embedding_dimension, head_size))
+        )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -63,18 +106,29 @@ class Head(nn.Module):
         :param data: input data
         :return: output data
         """
-        BATCH_SIZE, TOKEN_SIZE, CHANNEL_SIZE = data.shape
+        BATCH_SIZE, TOKEN_SIZE, EMBEDDING_SIZE = data.shape
+        assert (
+            EMBEDDING_SIZE == self.embedding_dimension
+        ), f"Given input embedding dimension ({EMBEDDING_SIZE}) should match layer embedding dimension ({self.embedding_dimension})"
 
         keys = self.key(data)
         queries = self.query(data)
         values = self.value(data)
 
-        weights = queries @ keys.transpose(-2, -1) / (CHANNEL_SIZE**0.5)
+        weights = queries @ keys.transpose(-2, -1) / (EMBEDDING_SIZE**0.5)
 
-        if self.is_in_encoder:
+        assert weights.shape == (
+            BATCH_SIZE,
+            TOKEN_SIZE,
+            TOKEN_SIZE,
+        ), f"Weights have shape {weights.shape}, but should have {(BATCH_SIZE, TOKEN_SIZE, TOKEN_SIZE)}."
+
+        if self.is_masked:
             weights = weights.masked_fill(
                 self.mask[:TOKEN_SIZE, :TOKEN_SIZE] == 0, float("-inf")
             )
 
         weights = F.softmax(weights, dim=-1)
+        weights = self.dropout(weights)
+
         return weights @ values
