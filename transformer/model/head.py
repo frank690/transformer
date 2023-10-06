@@ -106,26 +106,29 @@ class Head(nn.Module):
         :param data: input data
         :return: output data
         """
-        BATCH_SIZE, TOKEN_SIZE, EMBEDDING_SIZE = data.shape
+        token_size, batch_size, embedding_size = data.shape
+        print(f"head fwd: {data.shape}")
         assert (
-            EMBEDDING_SIZE == self.embedding_dimension
-        ), f"Given input embedding dimension ({EMBEDDING_SIZE}) should match layer embedding dimension ({self.embedding_dimension})"
+            embedding_size == self.embedding_dimension
+        ), f"Given input embedding dimension ({embedding_size}) should match layer embedding dimension ({self.embedding_dimension})"
 
         keys = self.key(data)
+        print(f"keys: {keys.shape}")
         queries = self.query(data)
         values = self.value(data)
-
-        weights = queries @ keys.transpose(-2, -1) / (EMBEDDING_SIZE**0.5)
+        tkeys = keys.transpose(-2, -1)
+        print(f"tkeys: {tkeys.shape}")
+        weights = queries @ tkeys / (embedding_size**0.5)
 
         assert weights.shape == (
-            BATCH_SIZE,
-            TOKEN_SIZE,
-            TOKEN_SIZE,
-        ), f"Weights have shape {weights.shape}, but should have {(BATCH_SIZE, TOKEN_SIZE, TOKEN_SIZE)}."
+            batch_size,
+            token_size,
+            token_size,
+        ), f"Weights have shape {weights.shape}, but should have {(batch_size, token_size, token_size)}."
 
         if self.is_masked:
             weights = weights.masked_fill(
-                self.mask[:TOKEN_SIZE, :TOKEN_SIZE] == 0, float("-inf")
+                self.mask[:token_size, :token_size] == 0, float("-inf")
             )
 
         weights = F.softmax(weights, dim=-1)

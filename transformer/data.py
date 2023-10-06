@@ -37,8 +37,8 @@ class GermanEnglishDataset(Dataset):
         self._prepare_data()
         self.de_data, self.en_data = self._open_data()
         self.de_tokenizer, self.en_tokenizer = self._get_tokenizers()
-        self.de_vocab = self._build_vocabulary(DE_DATA_PATH, self.de_tokenizer)
-        self.en_vocab = self._build_vocabulary(EN_DATA_PATH, self.en_tokenizer)
+        self.de_vocabular = self._build_vocabulary(DE_DATA_PATH, self.de_tokenizer)
+        self.en_vocabular = self._build_vocabulary(EN_DATA_PATH, self.en_tokenizer)
         self._tokenize_data()
 
     def _prepare_data(self) -> None:
@@ -88,11 +88,11 @@ class GermanEnglishDataset(Dataset):
         data = []
         for (raw_de, raw_en) in zip(self.de_data, self.en_data):
             de_tensor_ = torch.tensor(
-                [self.de_vocab[token] for token in self.de_tokenizer(raw_de)],
+                [self.de_vocabular[token] for token in self.de_tokenizer(raw_de)],
                 dtype=torch.long,
             )
             en_tensor_ = torch.tensor(
-                [self.en_vocab[token] for token in self.en_tokenizer(raw_en)],
+                [self.en_vocabular[token] for token in self.en_tokenizer(raw_en)],
                 dtype=torch.long,
             )
             data.append((de_tensor_, en_tensor_))
@@ -112,6 +112,21 @@ class GermanEnglishDataset(Dataset):
         :return: tuple of German and English data
         """
         return self.data[index]
+
+
+class GermanEnglishDataLoader(DataLoader):
+    """Dataloader for the German-English-Dataset"""
+
+    def __init__(self, dataset: Dataset, **kwargs) -> None:
+        """
+        Initialize the dataloader.
+        :param dataset: dataset to use
+        :param kwargs: keyword arguments
+        :return: None
+        """
+        super().__init__(dataset, **kwargs)
+        self.de_vocabular_size = len(dataset.dataset.de_vocabular)
+        self.en_vocabular_size = len(dataset.dataset.en_vocabular)
 
 
 def generate_batch(data_batch, vocabulary: Vocab) -> tuple:
@@ -156,22 +171,22 @@ def preprocess():
 
     test_data, train_data, val_data = random_split(dataset, TEST_TRAIN_VAL_SPLIT)
 
-    train_dataloader = DataLoader(
+    train_dataloader = GermanEnglishDataLoader(
         train_data,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        collate_fn=lambda batch: generate_batch(batch, dataset.de_vocab),
+        collate_fn=lambda batch: generate_batch(batch, dataset.de_vocabular),
     )
-    test_dataloader = DataLoader(
+    test_dataloader = GermanEnglishDataLoader(
         test_data,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        collate_fn=lambda batch: generate_batch(batch, dataset.de_vocab),
+        collate_fn=lambda batch: generate_batch(batch, dataset.de_vocabular),
     )
-    val_dataloader = DataLoader(
+    val_dataloader = GermanEnglishDataLoader(
         val_data,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        collate_fn=lambda batch: generate_batch(batch, dataset.de_vocab),
+        collate_fn=lambda batch: generate_batch(batch, dataset.de_vocabular),
     )
     return train_dataloader, test_dataloader, val_dataloader

@@ -18,12 +18,18 @@ class Encoder(nn.Module):
     """
 
     def __init__(
-        self, num_layers: int, embedding_dimension: int, num_heads: int, dropout: float
+        self,
+        num_layers: int,
+        vocabulary_size: int,
+        embedding_dimension: int,
+        num_heads: int,
+        dropout: float,
     ) -> None:
         """
         Initialization method.
 
         :param num_layers: number of layers.
+        :param vocabulary_size: size of the vocabulary.
         :param embedding_dimension: embedding dimension.
         :param num_heads: number of attention heads.
         :param dropout: dropout rate.
@@ -31,6 +37,9 @@ class Encoder(nn.Module):
         """
         super().__init__()
 
+        self.word_embedding = nn.Embedding(
+            num_embeddings=vocabulary_size, embedding_dim=embedding_dimension
+        )
         self.positional_encoding = PositionalEncoding(dropout=dropout)
         self.layers = nn.Sequential(
             *[
@@ -49,7 +58,8 @@ class Encoder(nn.Module):
         :param data: input data
         :return: output data
         """
-        x = self.positional_encoding(data)
+        x = self.word_embedding(data)
+        x = self.positional_encoding(x)
         return self.layers(x)
 
 
