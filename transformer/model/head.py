@@ -17,6 +17,7 @@ class Heads(nn.Module):
     def __init__(
         self,
         embedding_dimension: int,
+        block_size: int,
         num_heads: int,
         dropout: float,
         is_masked: bool = True,
@@ -24,6 +25,7 @@ class Heads(nn.Module):
         """
         Initialization method.
         :param embedding_dimension: embedding dimension.
+        :param block_size: maximum context length for predictions.
         :param num_heads: number of heads.
         :param dropout: dropout rate.
         :param is_masked: whether the heads are masked or not.
@@ -39,6 +41,7 @@ class Heads(nn.Module):
                 Head(
                     embedding_dimension=embedding_dimension,
                     head_size=head_size,
+                    block_size=block_size,
                     dropout=dropout,
                     is_masked=is_masked,
                 )
@@ -69,6 +72,7 @@ class Head(nn.Module):
         self,
         embedding_dimension: int,
         head_size: int,
+        block_size: int,
         dropout: float,
         is_masked: bool = False,
     ) -> None:
@@ -76,6 +80,7 @@ class Head(nn.Module):
         Initialization method.
         :param embedding_dimension: embedding dimension.
         :param head_size: size of the head (a whole numbered fraction of the embedding dimension).
+        :param block_size: maximum context length for predictions.
         :param dropout: dropout rate.
         :param is_masked: whether the head is masked or not.
         :return: None
@@ -96,9 +101,7 @@ class Head(nn.Module):
             embedding_dimension, head_size, bias=False
         )  # what head returns to others
 
-        self.register_buffer(
-            "mask", torch.tril(torch.ones(embedding_dimension, head_size))
-        )
+        self.register_buffer("mask", torch.tril(torch.ones(block_size, block_size)))
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -106,19 +109,17 @@ class Head(nn.Module):
         :param data: input data
         :return: output data
         """
-        token_size, batch_size, embedding_size = data.shape
-        print(f"head fwd: {data.shape}")
+        batch_size, token_size, embedding_size = data.shape
+
         assert (
             embedding_size == self.embedding_dimension
         ), f"Given input embedding dimension ({embedding_size}) should match layer embedding dimension ({self.embedding_dimension})"
 
         keys = self.key(data)
-        print(f"keys: {keys.shape}")
         queries = self.query(data)
         values = self.value(data)
-        tkeys = keys.transpose(-2, -1)
-        print(f"tkeys: {tkeys.shape}")
-        weights = queries @ tkeys / (embedding_size**0.5)
+
+        weights = queries @ keys.transpose(-2, -1) / (embedding_size**0.5)
 
         assert weights.shape == (
             batch_size,
@@ -133,5 +134,4 @@ class Head(nn.Module):
 
         weights = F.softmax(weights, dim=-1)
         weights = self.dropout(weights)
-
         return weights @ values

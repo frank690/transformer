@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from transformer.config import (
+    BLOCK_SIZE,
     DROPOUT_RATE,
     EMBEDDING_DIMENSION,
     NUMBER_ATTENTION_HEADS,
@@ -24,6 +25,7 @@ class Transformer(nn.Module):
         self,
         layers: int = NUMBER_TRANSFORMER_LAYERS,
         embedding_dimension: int = EMBEDDING_DIMENSION,
+        block_size: int = BLOCK_SIZE,
         num_attention_heads: int = NUMBER_ATTENTION_HEADS,
         dropout: float = DROPOUT_RATE,
     ) -> None:
@@ -38,12 +40,14 @@ class Transformer(nn.Module):
         self.encoder = Encoder(
             num_layers=layers,
             embedding_dimension=embedding_dimension,
+            block_size=block_size,
             num_heads=num_attention_heads,
             dropout=dropout,
         )
         self.decoder = Decoder(
             num_layers=layers,
             embedding_dimension=embedding_dimension,
+            block_size=block_size,
             num_heads=num_attention_heads,
             dropout=dropout,
         )

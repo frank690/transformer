@@ -18,13 +18,19 @@ class Decoder(nn.Module):
     """
 
     def __init__(
-        self, num_layers: int, embedding_dimension: int, num_heads: int, dropout: float
+        self,
+        num_layers: int,
+        embedding_dimension: int,
+        block_size: int,
+        num_heads: int,
+        dropout: float,
     ) -> None:
         """
         Initialization method.
 
         :param num_layers: number of layers.
         :param embedding_dimension: embedding dimension.
+        :param block_size: maximum context length for predictions.
         :param num_heads: number of attention heads.
         :param dropout: dropout rate.
         :return: None
@@ -36,6 +42,7 @@ class Decoder(nn.Module):
             *[
                 DecoderLayer(
                     embedding_dimension=embedding_dimension,
+                    block_size=block_size,
                     num_heads=num_heads,
                     dropout=dropout,
                 )
@@ -63,18 +70,22 @@ class DecoderLayer(nn.Module):
     """
 
     def __init__(
-        self, embedding_dimension: int, num_heads: int, dropout: float
+        self, embedding_dimension: int, block_size: int, num_heads: int, dropout: float
     ) -> None:
         """
         Initialization method.
         :param embedding_dimension: embedding dimension.
+        :param block_size: maximum context length for predictions.
         :param num_heads: number of attention heads.
+        :param dropout: dropout rate.
+        :return: None
         """
         super().__init__()
 
         self.dropout = nn.Dropout(dropout)
         self.masked_multi_head = Heads(
             embedding_dimension=embedding_dimension,
+            block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
             is_masked=True,
@@ -82,6 +93,7 @@ class DecoderLayer(nn.Module):
         self.norming_1 = nn.LayerNorm(embedding_dimension)
         self.cross_multi_head = Heads(
             embedding_dimension=embedding_dimension,
+            block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
         )

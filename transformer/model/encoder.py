@@ -22,6 +22,7 @@ class Encoder(nn.Module):
         num_layers: int,
         vocabulary_size: int,
         embedding_dimension: int,
+        block_size: int,
         num_heads: int,
         dropout: float,
     ) -> None:
@@ -31,6 +32,7 @@ class Encoder(nn.Module):
         :param num_layers: number of layers.
         :param vocabulary_size: size of the vocabulary.
         :param embedding_dimension: embedding dimension.
+        :param block_size: maximum context length for predictions.
         :param num_heads: number of attention heads.
         :param dropout: dropout rate.
         :return: None
@@ -38,13 +40,15 @@ class Encoder(nn.Module):
         super().__init__()
 
         self.word_embedding = nn.Embedding(
-            num_embeddings=vocabulary_size, embedding_dim=embedding_dimension
+            num_embeddings=vocabulary_size,
+            embedding_dim=embedding_dimension,
         )
         self.positional_encoding = PositionalEncoding(dropout=dropout)
         self.layers = nn.Sequential(
             *[
                 EncoderLayer(
                     embedding_dimension=embedding_dimension,
+                    block_size=block_size,
                     num_heads=num_heads,
                     dropout=dropout,
                 )
@@ -69,16 +73,23 @@ class EncoderLayer(nn.Module):
     """
 
     def __init__(
-        self, embedding_dimension: int, num_heads: int, dropout: float
+        self, embedding_dimension: int, block_size: int, num_heads: int, dropout: float
     ) -> None:
         """
         Initialization method.
+
+        :param embedding_dimension: embedding dimension.
+        :param block_size: maximum context length for predictions.
+        :param num_heads: number of attention heads.
+        :param dropout: dropout rate.
+        :return: None
         """
         super().__init__()
 
         self.dropout = nn.Dropout(dropout)
         self.multi_head = Heads(
             embedding_dimension=embedding_dimension,
+            block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
         )

@@ -23,7 +23,7 @@ class FeedForward(nn.Module):
 
         super().__init__()
 
-        self.forward = nn.Sequential(
+        self.linear = nn.Sequential(
             nn.Linear(embedding_dimension, 2 * embedding_dimension),
             nn.ReLU(),
             nn.Linear(2 * embedding_dimension, embedding_dimension),
@@ -36,4 +36,4 @@ class FeedForward(nn.Module):
         :param data: input data
         :return: output data
         """
-        return self.forward(data)
+        return self.linear(data)

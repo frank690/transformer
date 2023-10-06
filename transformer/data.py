@@ -155,9 +155,9 @@ def generate_batch(data_batch, vocabulary: Vocab) -> tuple:
             )
         )
 
-    return pad_sequence(de_batch, padding_value=PAD_IDX), pad_sequence(
-        en_batch, padding_value=PAD_IDX
-    )
+    return pad_sequence(
+        de_batch, padding_value=PAD_IDX, batch_first=True
+    ), pad_sequence(en_batch, padding_value=PAD_IDX, batch_first=True)
 
 
 def preprocess():
