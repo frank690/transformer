@@ -15,9 +15,10 @@ This project was done in the fall of 2023, using Python 3.9.4
     - [x] Tokenization
     - [x] Create dataset / data loader
 - [x] Implement positional encoding
-- [ ] Implement transformer encoder
+- [x] Implement transformer encoder
 - [ ] Implement transformer decoder
 - [x] Implement training routine
+- [ ] Test it all
 
 
 ## What data is used?
