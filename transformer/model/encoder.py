@@ -92,6 +92,7 @@ class EncoderLayer(nn.Module):
             block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
+            is_masked=False,
         )
         self.norming_1 = nn.LayerNorm(embedding_dimension)
         self.feed_forward = FeedForward(

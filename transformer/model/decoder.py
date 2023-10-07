@@ -4,6 +4,8 @@ This module contains the decoder classes of the transformer
 
 __all__ = ["Decoder"]
 
+from typing import Dict
+
 import torch
 import torch.nn as nn
 
@@ -20,6 +22,7 @@ class Decoder(nn.Module):
     def __init__(
         self,
         num_layers: int,
+        vocabulary_size: int,
         embedding_dimension: int,
         block_size: int,
         num_heads: int,
@@ -29,6 +32,7 @@ class Decoder(nn.Module):
         Initialization method.
 
         :param num_layers: number of layers.
+        :param vocabulary_size: size of the vocabulary.
         :param embedding_dimension: embedding dimension.
         :param block_size: maximum context length for predictions.
         :param num_heads: number of attention heads.
@@ -37,6 +41,10 @@ class Decoder(nn.Module):
         """
         super().__init__()
 
+        self.word_embedding = nn.Embedding(
+            num_embeddings=vocabulary_size,
+            embedding_dim=embedding_dimension,
+        )
         self.positional_encoding = PositionalEncoding(dropout=dropout)
         self.layers = nn.Sequential(
             *[
@@ -50,18 +58,16 @@ class Decoder(nn.Module):
             ]
         )
 
-    def forward(
-        self, data: torch.Tensor, encoded_value: torch.Tensor, encoded_key: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, data: torch.Tensor, encoded_data: torch.Tensor) -> Dict:
         """
         Define the forward pass behavior of the encoder.
         :param data: input data.
-        :param encoded_value: encoded value from the encoder.
-        :param encoded_key: encoded key from the encoder.
-        :return: output data.
+        :param encoded_data: encoded data from the encoder.
+        :return: dictionary containing decoder and encoder data.
         """
-        x = self.positional_encoding(data)
-        return self.layers(x, encoded_value, encoded_key)
+        x = self.word_embedding(data)
+        x = self.positional_encoding(x)
+        return self.layers({"decoder": x, "encoder": encoded_data})
 
 
 class DecoderLayer(nn.Module):
@@ -96,6 +102,7 @@ class DecoderLayer(nn.Module):
             block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
+            is_masked=False,
         )
         self.norming_2 = nn.LayerNorm(embedding_dimension)
         self.feed_forward = FeedForward(
@@ -103,23 +110,23 @@ class DecoderLayer(nn.Module):
         )
         self.norming_3 = nn.LayerNorm(embedding_dimension)
 
-    def forward(self, data: torch.Tensor, encoded_data: torch.Tensor) -> torch.Tensor:
+    def forward(self, data: Dict) -> Dict:
         """
         Define the forward pass behavior of the encoder layer.
-        :param data: input data.
+        :param data: dictionary containing input data and encoded data.
         :param encoded_data: encoded data from the encoder.
-        :return: output data.
+        :return: input dictionary but with updated decoder data.
         """
-        x = self.masked_multi_head(data)
-        data += self.dropout(x)
-        data = self.norming_1(data)
+        x = self.masked_multi_head(data["decoder"])
+        data["decoder"] += self.dropout(x)
+        data["decoder"] = self.norming_1(data["decoder"])
 
-        y = self.cross_multi_head(
-            data, encoded_data
-        )  # TODO: add input from encoder here somehow
-        data += self.dropout(y)
-        data = self.norming_2(data)
+        y = self.cross_multi_head(data["decoder"], data["encoder"])
+        data["decoder"] += self.dropout(y)
+        data["decoder"] = self.norming_2(data["decoder"])
 
-        z = self.feed_forward(data)
-        data += self.dropout(z)
-        return self.norming_3(data)
+        z = self.feed_forward(data["decoder"])
+        data["decoder"] += self.dropout(z)
+        data["decoder"] = self.norming_3(data["decoder"])
+
+        return data

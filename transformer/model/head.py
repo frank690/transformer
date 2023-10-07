@@ -4,6 +4,8 @@ This module implements the attention heads of the transformer.
 
 __all__ = ["Heads"]
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,7 +22,7 @@ class Heads(nn.Module):
         block_size: int,
         num_heads: int,
         dropout: float,
-        is_masked: bool = True,
+        is_masked: bool,
     ) -> None:
         """
         Initialization method.
@@ -52,13 +54,16 @@ class Heads(nn.Module):
 
         assert embedding_dimension % num_heads == 0
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, data: torch.Tensor, encoder_data: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Define the forward pass behavior of the heads.
-        :param data: input data
-        :return: output data
+        :param data: input data.
+        :param encoder_data: encoder data, if any (default: None).
+        :return: output data.
         """
-        result = torch.cat([head(data) for head in self.heads], dim=-1)
+        result = torch.cat([head(data, encoder_data) for head in self.heads], dim=-1)
         result = self.linear(result)
         return self.dropout(result)
 
@@ -74,7 +79,7 @@ class Head(nn.Module):
         head_size: int,
         block_size: int,
         dropout: float,
-        is_masked: bool = False,
+        is_masked: bool,
     ) -> None:
         """
         Initialization method.
@@ -101,35 +106,43 @@ class Head(nn.Module):
             embedding_dimension, head_size, bias=False
         )  # what head returns to others
 
-        self.register_buffer("mask", torch.tril(torch.ones(block_size, block_size)))
+        if self.is_masked:
+            self.register_buffer("mask", torch.tril(torch.ones(block_size, block_size)))
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, data: torch.Tensor, encoder_data: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Define the forward pass behavior of the head.
-        :param data: input data
-        :return: output data
+        :param data: input data.
+        :param encoder_data: encoder data.
+        :return: output data.
         """
-        batch_size, token_size, embedding_size = data.shape
+        if encoder_data is None:
+            encoder_data = data
+
+        batch_size, token_size, _ = data.shape
+        _, encoder_token_size, embedding_size = encoder_data.shape
 
         assert (
             embedding_size == self.embedding_dimension
         ), f"Given input embedding dimension ({embedding_size}) should match layer embedding dimension ({self.embedding_dimension})"
 
-        keys = self.key(data)
+        keys = self.key(encoder_data)
+        values = self.value(encoder_data)
         queries = self.query(data)
-        values = self.value(data)
 
         weights = queries @ keys.transpose(-2, -1) / (embedding_size**0.5)
 
         assert weights.shape == (
             batch_size,
             token_size,
-            token_size,
-        ), f"Weights have shape {weights.shape}, but should have {(batch_size, token_size, token_size)}."
+            encoder_token_size,
+        ), f"Weights have shape {weights.shape}, but should have {(batch_size, encoder_token_size, token_size)}."
 
         if self.is_masked:
             weights = weights.masked_fill(
-                self.mask[:token_size, :token_size] == 0, float("-inf")
+                self.mask[:encoder_token_size, :token_size] == 0, float("-inf")
             )
 
         weights = F.softmax(weights, dim=-1)
