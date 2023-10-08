@@ -117,16 +117,19 @@ class DecoderLayer(nn.Module):
         :param encoded_data: encoded data from the encoder.
         :return: input dictionary but with updated decoder data.
         """
-        x = self.masked_multi_head(data["decoder"])
-        data["decoder"] += self.dropout(x)
-        data["decoder"] = self.norming_1(data["decoder"])
+        decoder_data = data["decoder"]
+        encoder_data = data["encoder"]
 
-        y = self.cross_multi_head(data["decoder"], data["encoder"])
-        data["decoder"] += self.dropout(y)
-        data["decoder"] = self.norming_2(data["decoder"])
+        x = self.masked_multi_head(decoder_data)
+        decoder_data += self.dropout(x)
+        decoder_data = self.norming_1(decoder_data)
 
-        z = self.feed_forward(data["decoder"])
-        data["decoder"] += self.dropout(z)
-        data["decoder"] = self.norming_3(data["decoder"])
+        y = self.cross_multi_head(decoder_data, encoder_data)
+        decoder_data += self.dropout(y)
+        decoder_data = self.norming_2(decoder_data)
 
-        return data
+        z = self.feed_forward(decoder_data)
+        decoder_data += self.dropout(z)
+        decoder_data = self.norming_3(decoder_data)
+
+        return {"decoder": decoder_data, "encoder": encoder_data}

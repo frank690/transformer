@@ -7,11 +7,18 @@ __all__ = ["train", "validate"]
 import numpy as np
 import torch
 from torch import nn
+from torch.nn.modules.loss import _Loss
+from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
 def save_model(
-    model: nn.Module, path: str, epoch: int, optimizer, validation_loss: float
+    model: nn.Module,
+    path: str,
+    epoch: int,
+    optimizer: Optimizer,
+    validation_loss: float,
 ) -> None:
     """
     This function saves the model to the given path.
@@ -50,11 +57,11 @@ def load_model(model: nn.Module, path: str) -> nn.Module:
 
 def train(
     model: nn.Module,
-    optimizer,
+    optimizer: Optimizer,
     num_epochs: int,
-    training_dataloader,
-    validation_dataloader,
-    criterion,
+    training_dataloader: DataLoader,
+    validation_dataloader: DataLoader,
+    criterion: _Loss,
     device: str,
 ) -> dict:
     """
@@ -93,25 +100,30 @@ def train(
     return log
 
 
-def _validate(model: nn.Module, validation_dataloader, device: str) -> tuple:
+def _validate(
+    model: nn.Module, validation_dataloader: DataLoader, criterion: _Loss, device: str
+) -> tuple:
     """
     Validates the given model on the given validation data.
     :param model: model to validate
     :param validation_dataloader: dataloader that provides validation data
+    :param criterion: loss function to use
     :param device: device in use
     :return: tuple of validation accuracy and validation loss
     """
     model.eval()
-    criterion = nn.CrossEntropyLoss()
     correct, total = 0, 0
     loss_step = []
     with torch.no_grad():
         for data, labels in validation_dataloader:
             data, labels = data.to(device), labels.to(device)
 
-            outputs = model(data)
-            validation_loss = criterion(outputs, labels)
-            predicted = torch.max(outputs, 1)[1]
+            logits = model(data, labels)
+            logits, labels = _prepare_logits_for_loss(logits=logits, labels=labels)
+
+            validation_loss = criterion(logits, labels)
+
+            predicted = torch.max(logits, 1)[1]
             total += labels.size(0)
             correct += (predicted == labels).sum()
             loss_step.append(validation_loss.item())
@@ -122,31 +134,37 @@ def _validate(model: nn.Module, validation_dataloader, device: str) -> tuple:
 
 
 def _train_one_epoch(
-    model: nn.Module, optimizer, training_dataloader, device: str
+    model: nn.Module,
+    optimizer: Optimizer,
+    training_dataloader: DataLoader,
+    criterion: _Loss,
+    device: str,
 ) -> tuple:
     """
     Trains the given model for one epoch.
     :param model: model to train
     :param optimizer: optimizer to use
     :param training_dataloader: dataloader that provides training data
+    :param criterion: loss function to use
     :param device: device in use
     :return: tuple of loss and accuracy
     """
     model.train()
-    criterion = nn.CrossEntropyLoss()
     loss_step = []
     correct, total = 0, 0
     for data, labels in training_dataloader:
         data, labels = data.to(device), labels.to(device)
 
-        outputs = model(data)
-        loss = criterion(outputs, labels)
+        logits = model(data, labels)
+        logits, labels = _prepare_logits_for_loss(logits=logits, labels=labels)
+
+        loss = criterion(logits, labels)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         with torch.no_grad():
-            _, predicted = torch.max(outputs, 1)
+            _, predicted = torch.max(logits, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum()
             loss_step.append(loss.item())
@@ -155,3 +173,14 @@ def _train_one_epoch(
     train_accuracy = (100 * correct / total).cpu()
 
     return loss_current_epoch, train_accuracy
+
+
+def _prepare_logits_for_loss(logits: torch.Tensor, labels: torch.Tensor) -> tuple:
+    """
+    Prepares the logits and labels for the loss function.
+    :param logits: logits (decoder output)
+    :param labels: labels (true / expected output)
+    :return: tuple of logits and labels
+    """
+    B, T, C = logits.shape
+    return logits.view(B * T, C), labels.view(B * T)

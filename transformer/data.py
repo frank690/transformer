@@ -8,6 +8,7 @@ __all__ = ["preprocess"]
 import io
 from collections import Counter
 from functools import partial
+from typing import Tuple
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
@@ -30,9 +31,10 @@ class GermanEnglishDataset(Dataset):
     German-English-Dataset
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialization method.
+        :return: None
         """
         self._prepare_data()
         self.de_data, self.en_data = self._open_data()
@@ -44,6 +46,7 @@ class GermanEnglishDataset(Dataset):
     def _prepare_data(self) -> None:
         """
         Prepare the data by downloading and extracting it.
+        :return: None
         """
         download_from_url(url=DATA_DOWNLOAD_SOURCE)
         extract_archive(from_path=ZIPPED_DATA_PATH)
@@ -84,6 +87,7 @@ class GermanEnglishDataset(Dataset):
         """
         Load the data into tensors and tokenzie them on the way.
         Use the raw data, tokenizers and vocabularies of this class.
+        :return: None
         """
         data = []
         for (raw_de, raw_en) in zip(self.de_data, self.en_data):
@@ -160,12 +164,13 @@ def generate_batch(data_batch, vocabulary: Vocab) -> tuple:
     ), pad_sequence(en_batch, padding_value=PAD_IDX, batch_first=True)
 
 
-def preprocess():
+def preprocess() -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Main preprocess function to preprocess all the data.
     This includes initializing the german to englis dataset,
     splitting it into training, testing and validation and
     returning the corresponding dataloaders.
+    :return: tuple of training, testing and validation dataloader
     """
     dataset = GermanEnglishDataset()
 
