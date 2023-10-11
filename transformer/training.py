@@ -81,21 +81,27 @@ def train(
     progress_bar = tqdm(range(num_epochs))
 
     for epoch in progress_bar:
-        loss_current_epoch = _train_one_epoch(
+        loss_current_epoch, training_accuracy = _train_one_epoch(
             model, optimizer, training_dataloader, criterion, device
         )
-        validation_loss = _validate(model, validation_dataloader, criterion, device)
+        validation_loss, validation_accuracy = _validate(
+            model, validation_dataloader, criterion, device
+        )
 
         message = f"Ep {epoch+1}/{num_epochs}: || Loss: Train {loss_current_epoch:.3f} \t Val {validation_loss:.3f}"
         progress_bar.set_description(message)
 
-        log["train_loss"].append(loss_current_epoch)
-        log["val_loss"].append(validation_loss)
+        log["training_loss"].append(loss_current_epoch)
+        log["validation_loss"].append(validation_loss)
 
         if validation_loss < best_validation_loss:
             best_validation_loss = validation_loss
             save_model(
-                model, f"best_model_min_val_loss.pth", epoch, optimizer, validation_loss
+                model,
+                f"best_model_min_validation_loss.pth",
+                epoch,
+                optimizer,
+                validation_loss,
             )
     return log
 
@@ -128,9 +134,9 @@ def _validate(
             correct += (predicted == labels).sum()
             loss_step.append(validation_loss.item())
 
-        validation_accuracy = (100 * correct / total).cpu().numpy()
-        validation_loss_epoch = torch.tensor(loss_step).mean().numpy()
-        return validation_accuracy, validation_loss_epoch
+        validation_accuracy = (100 * correct / total).cpu().numpy().item()
+        validation_loss_epoch = torch.tensor(loss_step).mean().numpy().item()
+        return validation_loss_epoch, validation_accuracy
 
 
 def _train_one_epoch(
@@ -170,7 +176,7 @@ def _train_one_epoch(
             loss_step.append(loss.item())
 
     loss_current_epoch = np.mean(loss_step)
-    train_accuracy = (100 * correct / total).cpu()
+    train_accuracy = (100 * correct / total).cpu().item()
 
     return loss_current_epoch, train_accuracy
 

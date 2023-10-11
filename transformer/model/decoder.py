@@ -114,22 +114,21 @@ class DecoderLayer(nn.Module):
         """
         Define the forward pass behavior of the encoder layer.
         :param data: dictionary containing input data and encoded data.
-        :param encoded_data: encoded data from the encoder.
         :return: input dictionary but with updated decoder data.
         """
         decoder_data = data["decoder"]
         encoder_data = data["encoder"]
 
         x = self.masked_multi_head(decoder_data)
-        decoder_data += self.dropout(x)
+        decoder_data = self.dropout(x)
         decoder_data = self.norming_1(decoder_data)
 
         y = self.cross_multi_head(decoder_data, encoder_data)
-        decoder_data += self.dropout(y)
+        decoder_data = self.dropout(y)
         decoder_data = self.norming_2(decoder_data)
 
         z = self.feed_forward(decoder_data)
-        decoder_data += self.dropout(z)
+        decoder_data = self.dropout(z)
         decoder_data = self.norming_3(decoder_data)
 
         return {"decoder": decoder_data, "encoder": encoder_data}

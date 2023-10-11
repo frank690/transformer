@@ -56,7 +56,6 @@ class Transformer(nn.Module):
             dropout=dropout,
         )
         self.linear = nn.Linear(embedding_dimension, target_vocabulary_size)
-        # self.softmax = nn.Softmax(dim=2)
 
     def forward(
         self, source_data: torch.Tensor, target_data: torch.Tensor
