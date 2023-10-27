@@ -4,6 +4,8 @@ This module contains the encoder classes of the transformer
 
 __all__ = ["Encoder"]
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 
@@ -56,15 +58,18 @@ class Encoder(nn.Module):
             ]
         )
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, data: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Define the forward pass behavior of the encoder.
         :param data: input data
+        :param padding_mask: padding mask
         :return: output data
         """
         x = self.word_embedding(data)
         x = self.positional_encoding(x)
-        return self.layers(x)
+        return self.layers(data=x, padding_mask=padding_mask)
 
 
 class EncoderLayer(nn.Module):
@@ -73,7 +78,11 @@ class EncoderLayer(nn.Module):
     """
 
     def __init__(
-        self, embedding_dimension: int, block_size: int, num_heads: int, dropout: float
+        self,
+        embedding_dimension: int,
+        block_size: int,
+        num_heads: int,
+        dropout: float,
     ) -> None:
         """
         Initialization method.
@@ -92,7 +101,7 @@ class EncoderLayer(nn.Module):
             block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
-            is_masked=False,
+            block_future_tokens=False,
         )
         self.norming_1 = nn.LayerNorm(embedding_dimension)
         self.feed_forward = FeedForward(
@@ -100,13 +109,16 @@ class EncoderLayer(nn.Module):
         )
         self.norming_2 = nn.LayerNorm(embedding_dimension)
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, data: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Define the forward pass behavior of the encoder layer.
         :param data: input data
+        :param padding_mask: padding mask
         :return: output data
         """
-        x = self.multi_head(data)
+        x = self.multi_head(data=data, padding_mask=padding_mask)
         x = data + self.dropout(x)
         x = self.norming_1(x)
         x = self.feed_forward(x)

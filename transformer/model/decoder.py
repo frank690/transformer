@@ -4,7 +4,7 @@ This module contains the decoder classes of the transformer
 
 __all__ = ["Decoder"]
 
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -58,16 +58,24 @@ class Decoder(nn.Module):
             ]
         )
 
-    def forward(self, data: torch.Tensor, encoded_data: torch.Tensor) -> Dict:
+    def forward(
+        self,
+        data: torch.Tensor,
+        encoded_data: torch.Tensor,
+        padding_mask: Optional[torch.Tensor] = None,
+    ) -> Dict:
         """
         Define the forward pass behavior of the encoder.
         :param data: input data.
         :param encoded_data: encoded data from the encoder.
+        :param padding_mask: padding mask
         :return: dictionary containing decoder and encoder data.
         """
         x = self.word_embedding(data)
         x = self.positional_encoding(x)
-        return self.layers({"decoder": x, "encoder": encoded_data})
+        return self.layers(
+            {"decoder": x, "encoder": encoded_data, "padding_mask": padding_mask}
+        )
 
 
 class DecoderLayer(nn.Module):
@@ -89,12 +97,12 @@ class DecoderLayer(nn.Module):
         super().__init__()
 
         self.dropout = nn.Dropout(dropout)
-        self.masked_multi_head = Heads(
+        self.multi_head = Heads(
             embedding_dimension=embedding_dimension,
             block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
-            is_masked=True,
+            block_future_tokens=True,
         )
         self.norming_1 = nn.LayerNorm(embedding_dimension)
         self.cross_multi_head = Heads(
@@ -102,7 +110,7 @@ class DecoderLayer(nn.Module):
             block_size=block_size,
             num_heads=num_heads,
             dropout=dropout,
-            is_masked=False,
+            block_future_tokens=False,
         )
         self.norming_2 = nn.LayerNorm(embedding_dimension)
         self.feed_forward = FeedForward(
@@ -118,12 +126,13 @@ class DecoderLayer(nn.Module):
         """
         decoder_data = data["decoder"]
         encoder_data = data["encoder"]
+        padding_mask = data["padding_mask"]
 
-        x = self.masked_multi_head(decoder_data)
+        x = self.multi_head(data=decoder_data, padding_mask=padding_mask)
         decoder_data = self.dropout(x)
         decoder_data = self.norming_1(decoder_data)
 
-        y = self.cross_multi_head(decoder_data, encoder_data)
+        y = self.cross_multi_head(data=decoder_data, encoder_data=encoder_data)
         decoder_data = self.dropout(y)
         decoder_data = self.norming_2(decoder_data)
 
@@ -131,4 +140,8 @@ class DecoderLayer(nn.Module):
         decoder_data = self.dropout(z)
         decoder_data = self.norming_3(decoder_data)
 
-        return {"decoder": decoder_data, "encoder": encoder_data}
+        return {
+            "decoder": decoder_data,
+            "encoder": encoder_data,
+            "padding_mask": padding_mask,
+        }

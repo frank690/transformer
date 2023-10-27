@@ -14,6 +14,7 @@ from transformer.config import (
     NUMBER_ATTENTION_HEADS,
     NUMBER_TRANSFORMER_LAYERS,
 )
+from transformer.misc import generate_mask
 from transformer.model.decoder import Decoder
 from transformer.model.encoder import Encoder
 
@@ -66,6 +67,12 @@ class Transformer(nn.Module):
         :param target_data: target data that is fed into the decoder.
         :return: output data
         """
-        encoded_data = self.encoder(source_data)
-        decoded_data = self.decoder(target_data, encoded_data).get("decoder")
+        encoded_data = self.encoder(
+            data=source_data, padding_mask=generate_mask(source_data)
+        )
+        decoded_data = self.decoder(
+            data=target_data,
+            encoded_data=encoded_data,
+            padding_mask=generate_mask(target_data),
+        ).get("decoder")
         return self.linear(decoded_data)
