@@ -9,32 +9,34 @@ from math import log
 import torch
 import torch.nn as nn
 
-from transformer.config import BLOCK_SIZE, EMBEDDING_DIMENSION
-
 
 class PositionalEncoding(nn.Module):
     """Positonal encoding class"""
 
-    def __init__(self, dropout: float) -> None:
+    def __init__(
+        self, embedding_dimension: int, block_size: int, dropout: float
+    ) -> None:
         """
         Initialization method.
+        :param embedding_dimension: embedding dimension.
+        :param block_size: maximum context length for predictions.
         :param dropout: dropout rate.
         :return: None
         """
         super().__init__()
 
         assert (
-            EMBEDDING_DIMENSION % 2 == 0
+            embedding_dimension % 2 == 0
         ), "Embedding dimension must be an even number"
 
         self.dropout = nn.Dropout(dropout)
 
-        position = torch.arange(BLOCK_SIZE).unsqueeze(1)
+        position = torch.arange(block_size).unsqueeze(1)
         denominator = torch.exp(
-            torch.arange(0, EMBEDDING_DIMENSION, 2)
-            * (-log(10000.0) / EMBEDDING_DIMENSION)
+            torch.arange(0, embedding_dimension, 2)
+            * (-log(10000.0) / embedding_dimension)
         )
-        encoding = torch.zeros(BLOCK_SIZE, 1, EMBEDDING_DIMENSION)
+        encoding = torch.zeros(block_size, 1, embedding_dimension)
         encoding[:, 0, 0::2] = torch.sin(position * denominator)
         encoding[:, 0, 1::2] = torch.cos(position * denominator)
         self.register_buffer("encoding", encoding)

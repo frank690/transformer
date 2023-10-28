@@ -1,5 +1,5 @@
 """
-This moduel contains test for the head and heads class.
+This moduel contains tests for the head and heads class.
 """
 
 from contextlib import nullcontext
@@ -631,3 +631,56 @@ class TestHead:
 
         result = head.forward(data)
         assert torch.all(torch.isclose(result, expected_result, atol=1e-4))
+
+
+class TestHeads:
+    """
+    This class contains all the tests for the Heads class.
+    """
+
+    @pytest.mark.parametrize(
+        "embedding_dimension, block_size, num_heads, dropout, block_future_tokens, expected_error",
+        [
+            (10, 42, 2, 0.1, True, None),
+            (11, 42, 2, 0.1, True, AssertionError),
+            (10, 42, 3, 0.1, True, AssertionError),
+            (128, 1337, 8, 0.1, True, None),
+            (128, 1337, 8, 0.1, False, None),
+            (128, 1337, 8, -0.1, True, ValueError),
+            (128, 1337, 8, 1.1, False, ValueError),
+        ],
+    )
+    def test_init(
+        self,
+        embedding_dimension: int,
+        block_size: int,
+        num_heads: int,
+        dropout: float,
+        block_future_tokens: bool,
+        expected_error: Exception,
+    ):
+        """
+        Tests the __init__ method.
+        """
+        with pytest.raises(
+            expected_error
+        ) if expected_error is not None else nullcontext():
+            heads = Heads(
+                embedding_dimension=embedding_dimension,
+                block_size=block_size,
+                num_heads=num_heads,
+                dropout=dropout,
+                block_future_tokens=block_future_tokens,
+            )
+
+            assert heads.linear.out_features == embedding_dimension
+            assert len(heads.heads) == num_heads
+
+            for head in heads.heads:
+                assert head.embedding_dimension == embedding_dimension
+                assert head.block_future_tokens == block_future_tokens
+                assert head.dropout.p == dropout
+                assert isinstance(head, Head)
+
+            assert isinstance(heads.dropout, nn.Dropout)
+            assert isinstance(heads.linear, nn.Linear)

@@ -45,7 +45,11 @@ class Encoder(nn.Module):
             num_embeddings=vocabulary_size,
             embedding_dim=embedding_dimension,
         )
-        self.positional_encoding = PositionalEncoding(dropout=dropout)
+        self.positional_encoding = PositionalEncoding(
+            embedding_dimension=embedding_dimension,
+            block_size=block_size,
+            dropout=dropout,
+        )
         self.layers = nn.Sequential(
             *[
                 EncoderLayer(

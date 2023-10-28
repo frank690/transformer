@@ -52,7 +52,9 @@ class Heads(nn.Module):
         )
         self.linear = nn.Linear(head_size * num_heads, embedding_dimension)
 
-        assert embedding_dimension % num_heads == 0
+        assert (
+            embedding_dimension % num_heads == 0
+        ), "Embedding dimension must be divisible by number of heads."
 
     def forward(
         self,
