@@ -24,6 +24,7 @@ class TestPositionalEncoding:
             (42, 128, 1, None),
             (42, 128, 0.5, None),
             (43, 128, 0.5, AssertionError),
+            (42, 63, 0.5, AssertionError),
         ],
     )
     def test_init(
@@ -44,7 +45,14 @@ class TestPositionalEncoding:
                 block_size=block_size,
                 dropout=dropout,
             )
-            x = torch.randint(0, 100, (1337, 1))
+            batch_size = 64
+            current_max_sentence_length = 222
+            vocabulary_size = 1337
+            x = torch.randint(
+                0,
+                vocabulary_size,
+                (batch_size, current_max_sentence_length, embedding_dimension),
+            )
 
             assert pos.encoding.shape == (block_size, 1, embedding_dimension)
             assert torch.all(pos.encoding[0, 0, 0::2] == 0)
@@ -53,4 +61,4 @@ class TestPositionalEncoding:
             assert torch.all(pos.encoding[1, 0, 0::2] != 1)
             assert torch.all((pos.encoding <= 1) & (pos.encoding >= -1))
 
-            assert pos(x).shape == (block_size, x.size(0), embedding_dimension)
+            assert pos(x).shape == x.shape

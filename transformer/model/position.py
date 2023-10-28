@@ -30,6 +30,7 @@ class PositionalEncoding(nn.Module):
         ), "Embedding dimension must be an even number"
 
         self.dropout = nn.Dropout(dropout)
+        self.block_size = block_size
 
         position = torch.arange(block_size).unsqueeze(1)
         denominator = torch.exp(
@@ -47,5 +48,7 @@ class PositionalEncoding(nn.Module):
         :param x: input data
         :return: positional encoded output data
         """
+        assert self.block_size >= x.size(0), "Batch size should not exceed block size."
+
         x = x + self.encoding[: x.size(0)]
         return self.dropout(x)
